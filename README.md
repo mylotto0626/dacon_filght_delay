@@ -16,6 +16,9 @@
 [설명]
 레이블이 없는 데이터와 함께 항공편 지연 여부를 예측하는 AI 모델 개발
 
-*참고*
+<br>
+
+**참고**
+
 데이터 파일 크기로 인해 구글 드라이브 링크를 첨부함
 [Google Drive](https://drive.google.com/drive/folders/1ZbPHU7GnVw-s0XCwGh3VXi1Ny_0rRX_R?usp=drive_link)
