@@ -28,58 +28,72 @@
 |------|------|
 | Language | Python |
 | Data Processing | Pandas, NumPy |
-| Analysis | Scikit-learn |
+| ML | Scikit-learn |
 | Visualization | Matplotlib, Seaborn |
-| Environment | Google Colab |
+| Environment | Google Colab (GPU T4) |
 
 -----------------------------------------------------
 
-## 3. 분석 프로세스 (Workflow)
+## 2. 분석 프로세스 (Workflow)
 
-1.  **데이터 전처리 (Data Preprocessing)**
-    * 원시 데이터를 HS4 코드별 월간 무역량으로 집계 및 시계열 매트릭스 변환.
+1.  **데이터 변환 (Data Format Conversion)**
+    * csv를 Parquet로 변환하아ㅕ 대용량 데이터의 빠른 입출력을 위한 포맷 변환 
     * 시계열 연속성 확보를 위한 선형 보간(Interpolation) 수행.
 
-2.  **공행성 판별 (Statistical Testing)**
-    * `Statsmodels`를 활용하여 전 품목 대상 **Granger Causality Test** 수행.
-    * 통계적으로 유의미한 선후행 쌍(A → B)을 필터링하여 학습 데이터셋 구성.
+2.  **Feature Engineering**
+    * 출발/도착 시간, 항공사, 공항 등 범주형 변수 식별.
+    * 결측치 플래그(Missing Indicator) 생성 및 불필요한 컬럼 제거.
 
-3.  **특성 공학 (Feature Engineering)**
-    * 선행 품목의 과거 데이터(1, 2, 3개월 Lag) 생성 및 파생 변수 추가.
-    * 범주형 변수(HS4 코드) 지정으로 모델의 학습 효율 증대.
+3.  **Model Training (Catboost)**
+    * 레이블이 존재하는 데이터셋 추출 후 `CatBoostClassifier` 학습.
+    * GPU 모드 및 범주형 피처 자동 처리 설정.
 
-4.  **모델 학습 및 추론 (Model & Inference)**
-    * **HistGradientBoostingRegressor** 모델 구축 및 학습.
-    * 2025년 8월 타겟 품목의 무역량(Value) 최종 예측값 산출.
-
-5.  **성과 평가 (Evaluation)**
-    * 검증 데이터셋을 통한 에러 분석 및 시각화를 통한 최종 검토.
+4.  **Inference & Submission**
+    * 테스트 데이터셋에 대한 지연 확률 도출 및 제출 파일 생성.
 
 -----------------------------------------------------
 
-## 4. 🚀 Key Results (핵심 성과)
-### ✅ 결과 1. 통계적 선후행(Comovement) 판별
-단순 상관관계를 넘어, 시차를 고려한 인과성을 검증하여 분석의 논리적 근거를 확보했습니다.
-* **분석 기법**: 최대 3개월의 시차(Lag)를 설정하여 p-value < 0.05인 유의미한 품목 쌍 추출.
-* **인사이트**: 특정 원자재 수입량 변동이 평균 2개월 뒤 가공품 수입량에 반영됨을 수치화함.
+## 3. 🚀 Key Results (핵심 성과)
+### ✅ 결과 1. 고효율 데이터 파이프라인 구축 (Memory Optimization)
+대규모 CSV 파일을 그대로 로딩하는 비효율성을 해결하기 위해 데이터 저장 형식을 최적화했습니다.
+* **CSV to Parquet**: 초기 1회 변환을 통해 로딩 속도를 개선하고 메모리 점유율을 대폭 낮춤.
+* **Data Type Casting**: 불필요한 데이터 타입을 정리하여 분석 환경의 안정성 확보.
 
-![Granger Causality Heatmap](https://github.com/[사용자아이디]/[레포이름]/raw/main/images/heatmap.png)  
-*<p align="left">그림 1. 품목 간 Granger Causality Test 결과 (p-value Heatmap)</p>*
+### ✅ 결과 2. 강력한 결측치 처리 전략 (Missing Indicator)
+데이터 내 다수 존재하는 결측치를 단순 삭제하지 않고 모델이 학습할 수 있는 정보로 변환했습니다.
+* **Missing Indicator**: 결측 여부 자체를 새로운 피처로 추가하여, 데이터의 누락 패턴이 지연에 미치는 영향력을 모델이 학습하도록 유도.
+* **CatBoost Native Handling**: 범주형 변수의 결측치를 CatBoost 내부 알고리즘이 효과적으로 처리하도록 설정.
 
-### ✅ 결과 2. Gradient Boosting 기반 정밀 예측
-결측치 처리에 강점이 있고 비선형 패턴 학습에 유리한 **HistGradientBoostingRegressor**를 활용했습니다.
-* **특징**: 단일 고성능 부스팅 모델을 최적화하여 연산 효율성과 예측 성능을 동시에 확보.
-* **핵심 변수**: 선행 품목의 1~3개월 전 시차 변수(Lagged Features)를 포함하여 예측 성능 극대화.
-
-### ✅ 결과 3. 예측 타당성 검증
-2025년 8월 예측치와 과거 시계열 추세를 비교하여 모델이 실제 무역 흐름을 잘 반영하는지 확인했습니다.
-
-![Actual vs Predicted](https://github.com/[사용자아이디]/[레포이름]/raw/main/images/prediction_result.png)  
-*<p align="left">그림 2. 주요 후행 품목의 실제 추세 및 2025.08 예측 결과 시각화</p>*
+### ✅ 결과 3. CatBoost 분류 모델 최적화
+범주형 변수가 많은 항공 데이터의 특성에 맞춰 최적의 알고리즘을 선정했습니다.
+* **GPU 가속**: Colab T4 GPU를 활용하여 학습 속도 단축.
+* **Probability Prediction**: 단순 분류가 아닌 `predict_proba`를 활용하여 지연 가능성을 확률값으로 산출, 예측의 정밀도 향상.
 
 -----------------------------------------------------
+## 4. 🧠 Troubleshooting (트러블슈팅)
 
-## 5. 기대 효과 및 활용 방안
-* **공급망 관리**: 수입량 급감/급증에 대한 선행 지표를 확보하여 리스크 사전 대응 가능.
-* **재고 최적화**: 후행 품목의 수요 예측 정확도를 높여 물류 비용 절감에 기여.
+### ❓ Issue 1: CatBoost `cat_features`의 데이터 타입 충돌
+* **문제**: 범주형 변수로 지정한 컬럼에 결측치(`NaN`)가 포함되어 있어, Pandas가 해당 컬럼의 dtype을 자동으로 `float`로 설정함.
+            <br>CatBoost는 범주형 변수로 **문자열(String) 또는 정수(Integer)만 허용**하므로 `float` 타입 포함 시 에러 발생.
+* **원인**: `20253.0`과 같이 소수점이 포함된 실수형 데이터는 CatBoost의 범주형 피처로 직접 사용할 수 없음.
+* **해결**: 
+    1. 지정한 범주형 컬럼 전체를 `.astype(str)`을 통해 **문자열 타입으로 강제 형변환**.
+    2. 소수점이 포함된 형태(예: '20253.0')까지 모두 문자열로 통일하여 모델이 범주형 데이터로 인식할 수 있도록 처리함.
+ 
+### ❓ Issue 2: 레이블 누락 및 결측 데이터 처리
+* **문제**: 타겟 레이블이 없는 데이터와 피처 내 결측치가 혼재되어 학습이 어려움.
+* **해결**: 결측치를 단순히 평균이나 최빈값으로 채우는 대신, **결측 여부(Indicator)**를 피처로 활용하여 모델이 데이터의 부재 패턴을 스스로 파악하게 함으로써 예측력을 높임.
+
+---
+
+## 5. 📝 회고 (Retrospective)
+
+* **학습 내용**: CatBoost를 사용할 때 데이터 타입(dtype)에 따른 엄격한 제약 조건을 경험하며, 전처리 단계에서의 데이터 타입 관리의 중요성을 깨달았습니다.
+* **성공적인 점**: 단순한 평균치 대체를 넘어 '결측 여부'를 정보로 활용하는 전략을 통해 데이터 손실 없이 예측 성능을 방어할 수 있었습니다.
+* **향후 과제**: 레이블이 없는 대량의 데이터를 활용하기 위해 **Pseudo-labeling**이나 **준지도 학습(Semi-supervised Learning)** 기법을 추가로 연구해보고 싶습니다.
+---
+
+## 6. 기대 효과 및 활용 방안
+* **데이터 효율화**: 대규모 정형 데이터를 처리하는 표준화된 파이프라인(Parquet + CatBoost) 제안.
+* **예측 정확도**: 항공사 및 공항별 지연 패턴을 확률 기반으로 분석하여 운영 효율성 제고 자료로 활용 가능.
 
